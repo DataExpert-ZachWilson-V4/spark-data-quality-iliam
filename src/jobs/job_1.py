@@ -69,11 +69,6 @@ def query_1(input_table_name: str) -> str:
             row_number = 1
     """
     return query
-
-def job_1(spark_session: SparkSession, output_table_name: str) -> Optional[DataFrame]:
-  output_df = spark_session.table(output_table_name)
-  output_df.createOrReplaceTempView(output_table_name)
-  return spark_session.sql(query_1(output_table_name))
 def job_1(
     spark_session: SparkSession, input_table_name: str, output_table_name: str
 ) -> Optional[DataFrame]:
@@ -81,19 +76,13 @@ def job_1(
     output_df.createOrReplaceTempView(output_table_name)
     return spark_session.sql(query_1(input_table_name))
 
+
 def main():
-    output_table_name: str = "<output table name here>"
     input_table_name: str = "nba_game_details"
     output_table_name: str = "nba_game_details_dedup"
     spark_session: SparkSession = (
-        SparkSession.builder
-        .master("local")
-        .appName("job_1")
-        .getOrCreate()
         SparkSession.builder.master("local").appName("job_1").getOrCreate()
     )
-    output_df = job_1(spark_session, output_table_name)
-    output_df.write.mode("overwrite").insertInto(output_table_name)
     output_df = job_1(spark_session, input_table_name, output_table_name)
     output_df.write.option(
         "path", spark_session.conf.get("spark.sql.warehouse.dir", "spark-warehouse")
