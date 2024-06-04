@@ -10,7 +10,6 @@ from pyspark.sql.types import (
 )
 
 def query_1(output_table_name: str) -> str:
-# Define the schema for the DataFrame to ensure correct data types and nullable settings
 schema = StructType(
     [
         StructField("game_id", LongType(), True),
@@ -29,17 +28,14 @@ schema = StructType(
     ]
 )
 
-# Function to load an existing table or create it if it does not exist
 def load_or_create_table(spark_session, table_name):
     if table_name not in spark_session.catalog.listTables():
-        empty_df = spark_session.createDataFrame([], schema)  # Create an empty DataFrame with the defined schema
-        empty_df.write.mode("overwrite").saveAsTable(table_name)  # Save DataFrame as a table
-    return spark_session.table(table_name)  # Return the table
+        empty_df = spark_session.createDataFrame([], schema) 
+        empty_df.write.mode("overwrite").saveAsTable(table_name)
+    return spark_session.table(table_name)
 
-# SQL query to deduplicate records based on game_id, team_id, and player_id
 def query_1(input_table_name: str) -> str:
     query = f"""
-    <YOUR QUERY HERE>
         WITH
             row_nums AS (
                 SELECT
@@ -78,13 +74,12 @@ def job_1(spark_session: SparkSession, output_table_name: str) -> Optional[DataF
   output_df = spark_session.table(output_table_name)
   output_df.createOrReplaceTempView(output_table_name)
   return spark_session.sql(query_1(output_table_name))
-# Main job function that performs the deduplication process
 def job_1(
     spark_session: SparkSession, input_table_name: str, output_table_name: str
 ) -> Optional[DataFrame]:
     output_df = load_or_create_table(spark_session, output_table_name)
-    output_df.createOrReplaceTempView(output_table_name)  # Temporarily register DataFrame as a table
-    return spark_session.sql(query_1(input_table_name))  # Execute the deduplication query and return the result
+    output_df.createOrReplaceTempView(output_table_name)
+    return spark_session.sql(query_1(input_table_name))
 
 def main():
     output_table_name: str = "<output table name here>"
@@ -95,11 +90,11 @@ def main():
         .master("local")
         .appName("job_1")
         .getOrCreate()
-        SparkSession.builder.master("local").appName("job_1").getOrCreate()  # Initialize Spark session
+        SparkSession.builder.master("local").appName("job_1").getOrCreate()
     )
     output_df = job_1(spark_session, output_table_name)
     output_df.write.mode("overwrite").insertInto(output_table_name)
     output_df = job_1(spark_session, input_table_name, output_table_name)
     output_df.write.option(
-        "path", spark_session.conf.get("spark.sql.warehouse.dir", "spark-warehouse")  # Define output path
-    ).mode("overwrite").insertInto(output_table_name)  # Write DataFrame back into the warehouse directory
+        "path", spark_session.conf.get("spark.sql.warehouse.dir", "spark-warehouse")
+    ).mode("overwrite").insertInto(output_table_name)
