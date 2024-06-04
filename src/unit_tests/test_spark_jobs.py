@@ -92,13 +92,85 @@ def test_game_details_dedupe(spark):
     assert_df_equality(actual_df, expected_df, ignore_nullable=True)
 
 # Test function to verify the calculation logic for user device history in job_2
+
 def test_device_cumulation(spark):
-    # Example input data using the DeviceHistory namedtuple
+    # Define a list of test data using the DeviceHistory namedtuple to simulate device browsing histories
     input_data = [
         DeviceHistory(
-            -1358803869, "YandexBot", [datetime.strptime("2023-01-01", "%Y-%m-%d").date()], datetime.strptime("2023-01-01", "%Y-%m-%d").date(),
+            -1358803869,  # user_id
+            "YandexBot",  # browser_type
+            [datetime.strptime("2023-01-01", "%Y-%m-%d").date()],  # list of active dates
+            datetime.strptime("2023-01-01", "%Y-%m-%d").date(),  # date of interest for this test
         ),
         DeviceHistory(
-            -1816209818, "Googlebot", [
+            -1816209818,  # user_id
+            "Googlebot",  # browser_type
+            [  # list of active dates
                 datetime.strptime("2023-01-06", "%Y-%m-%d").date(),
-                datetime.strptime("
+                datetime.strptime("2023-01-05", "%Y-%m-%d").date(),
+                datetime.strptime("2023-01-04", "%Y-%m-%d").date(),
+                datetime.strptime("2023-01-03", "%Y-%m-%d").date(),
+                datetime.strptime("2023-01-02", "%Y-%m-%d").date(),
+                datetime.strptime("2023-01-01", "%Y-%m-%d").date(),
+            ],
+            datetime.strptime("2023-01-06", "%Y-%m-%d").date(),  # date of interest for this test
+        ),
+        DeviceHistory(
+            -2077270748,  # user_id
+            "Googlebot",  # browser_type
+            [datetime.strptime("2023-01-06", "%Y-%m-%d").date()],  # list of active dates
+            datetime.strptime("2023-01-06", "%Y-%m-%d").date(),  # date of interest for this test
+        ),
+    ]
+
+    # Define the schema for input data to ensure DataFrame is created with correct data types
+    schema_input = StructType(
+        [
+            StructField("user_id", LongType(), True),
+            StructField("browser_type", StringType(), True),
+            StructField("dates_active", ArrayType(DateType()), True),
+            StructField("date", DateType(), True),
+        ]
+    )
+
+    # Create a DataFrame from the test data and schema, then write it to a Spark table
+    input_dataframe = spark.createDataFrame(input_data, schema=schema_input)
+    input_table_name = "device_history"
+    input_dataframe.write.option(
+        "path", spark.conf.get("spark.sql.warehouse.dir", "spark-warehouse")
+    ).mode("overwrite").saveAsTable(input_table_name)
+
+    # Execute the job_2 function to process the data based on the test table
+    actual_df = job_2(spark, "device_history", "history_date_list_int")
+
+    # Define the expected output data using the DeviceHistoryDateInt namedtuple
+    expected_output = [
+        DeviceHistoryDateInt(
+            -2077270748,
+            "Googlebot",
+            2**30,  # history_int calculated as a power of two based on active dates
+            bin(2**30)[2:],  # history_in_binary converted from the integer value
+        ),
+        DeviceHistoryDateInt(
+            -1816209818,
+            "Googlebot",
+            2**30 + 2**29 + 2**28 + 2**27 + 2**26 + 2**25,  # history_int summed as powers of two for each active date
+            bin(2**30 + 2**29 + 2**28 + 2**27 + 2**26 + 2**25)[2:],  # history_in_binary converted from the integer sum
+        ),
+    ]
+
+    # Define the schema for the expected output data
+    schema_output = StructType(
+        [
+            StructField("user_id", LongType(), True),
+            StructField("browser_type", StringType(), True),
+            StructField("history_int", LongType(), True),
+            StructField("history_in_binary", StringType(), True),
+        ]
+    )
+
+    # Create a DataFrame from the expected output data and schema
+    expected_df = spark.createDataFrame(expected_output, schema=schema_output)
+
+    # Assert that the actual DataFrame is equal to the expected DataFrame, ignoring nullable differences
+    assert_df_equality(actual_df, expected_df, ignore_nullable=True)
