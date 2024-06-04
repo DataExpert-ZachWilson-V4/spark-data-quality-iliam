@@ -8,7 +8,7 @@ from pyspark.sql.types import (
     LongType,
 )
 
-# Define the schema for the output DataFrame to ensure proper data types and nullable settings
+
 schema_output = StructType(
     [
         StructField("user_id", LongType(), True),
@@ -64,32 +64,35 @@ FROM
 ORDER BY user_id
     """
     return query
+  
 
-# Function to convert integer to binary string
 def int_to_binary(integer):
     return bin(integer)[2:]
 
-# User-defined function to check if a date is in a list of dates
-def array_contains_date(dates, date_to_check):
-    return date_to_check in dates
 
-# Job function to process the data and write the results to an output table
+# Define the UDF
+def array_contains_date(dates, date_to_check):
+    return date_to_check in dates  
+
+
 def job_2(
     spark_session: SparkSession, input_table_name: str, output_table_name: str
 ) -> Optional[DataFrame]:
-    spark_session.udf.register("int_to_binary", int_to_binary, StringType())  # Register the integer to binary conversion function
+    spark_session.udf.register("int_to_binary", int_to_binary, StringType())
     spark_session.udf.register(
-        "array_contains_date", array_contains_date, BooleanType()  # Register the date checking function
+        "array_contains_date", array_contains_date, BooleanType()
     )
-    output_df = load_or_create_table(spark_session, output_table_name)  # Load or create the output table
-    output_df.createOrReplaceTempView(output_table_name)  # Temporarily register the DataFrame as a table
-    return spark_session.sql(query_2(input_table_name))  # Execute the SQL query and return the result
+    output_df = load_or_create_table(spark_session, output_table_name)
+    output_df.createOrReplaceTempView(output_table_name)
+    return spark_session.sql(query_2(input_table_name))
+
+
 
 def main():
     input_table_name: str = "devices_history"
     output_table_name: str = "history_date_list_int"
     spark_session: SparkSession = (
-        SparkSession.builder.master("local").appName("job_2").getOrCreate()  # Initialize Spark session
+        SparkSession.builder.master("local").appName("job_2").getOrCreate()
     )
     output_df = job_2(spark_session, input_table_name, output_table_name)
     output_df.write.option(

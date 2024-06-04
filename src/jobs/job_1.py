@@ -72,6 +72,7 @@ def query_1(input_table_name: str) -> str:
     """
     return query
 
+  
 # Main job function that performs the deduplication process
 def job_1(
     spark_session: SparkSession, input_table_name: str, output_table_name: str
@@ -86,6 +87,7 @@ def main():
     spark_session: SparkSession = (
         SparkSession.builder.master("local").appName("job_1").getOrCreate()  # Initialize Spark session
     )
+
     output_df = job_1(spark_session, input_table_name, output_table_name)
     output_df.write.option(
         "path", spark_session.conf.get("spark.sql.warehouse.dir", "spark-warehouse")  # Define output path
